@@ -24,7 +24,7 @@ FROM urho3d/dockerized:latest
 
 RUN dpkg --add-architecture i386 && apt-get update && apt-get install -y --no-install-recommends \
     # Display server
-    libgl1-mesa-dev libxcursor-dev libxi-dev libxinerama-dev libxrandr-dev libxrender-dev libxss-dev \
+    libgl1-mesa-dev libxcursor-dev libxi-dev libxinerama-dev libxrandr-dev libxrender-dev libxss-dev libxxf86vm-dev \
     \
     # Sound server
     libasound2-dev libpulse-dev \
@@ -33,7 +33,7 @@ RUN dpkg --add-architecture i386 && apt-get update && apt-get install -y --no-in
     libibus-1.0-dev \
     \
     # Misc.
-    libdbus-1-dev libreadline6-dev libudev-dev \
+    libdbus-1-dev libreadline6-dev libssl-dev libudev-dev \
     \
     # LLVM/Clang compiler toolchain, use 'CC=clang CXX=clang++' to choose this toolchain instead of gcc/g++
     clang clang-tidy clang-format \

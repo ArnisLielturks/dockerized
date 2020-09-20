@@ -1,6 +1,5 @@
-#!/usr/bin/env bash
 #
-# Copyright (c) 2018-2020 Yao Wei Tjong. All rights reserved.
+# Copyright (c) 2020 Yao Wei Tjong. All rights reserved.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -21,22 +20,34 @@
 # THE SOFTWARE.
 #
 
-# Select the compiler toolchain based on the ARCH env var
-if [[ "${ARCH/bin}" == "32" ]]; then
-    export RPI_PREFIX=$RPI32_PREFIX RPI_SYSROOT=$RPI32_SYSROOT RPI_ABI=RPI3
-else
-    export RPI_PREFIX=$RPI64_PREFIX RPI_SYSROOT=$RPI64_SYSROOT RPI_ABI=RPI4
-fi
+version: '3.7'
+services:
+  urho3d-base:
+    build: urho3d/_base
+    image: weitjong/dockerized:urho3d-base
+  urho3d-linux:
+    build: urho3d/linux
+    image: weitjong/dockerized:urho3d-linux
+    depends_on: [urho3d-base]
+  urho3d-mingw:
+    build: urho3d/mingw
+    image: weitjong/dockerized:urho3d-mingw
+    depends_on: [urho3d-base]
+  urho3d-android:
+    build: urho3d/android
+    image: weitjong/dockerized:urho3d-android
+    depends_on: [urho3d-base]
+  urho3d-rpi:
+    build: urho3d/rpi
+    image: weitjong/dockerized:urho3d-rpi
+    depends_on: [urho3d-base]
+  urho3d-arm:
+    build: urho3d/arm
+    image: weitjong/dockerized:urho3d-arm
+    depends_on: [urho3d-base]
+  urho3d-web:
+    build: urho3d/web
+    image: weitjong/dockerized:urho3d-web
+    depends_on: [urho3d-base]
 
-# Custom ccache symlinks update
-sudo bash -c "cd /usr/lib/ccache \
-    && ln -s ../../bin/ccache ${RPI_PREFIX##*/}-gcc \
-    && ln -s ../../bin/ccache ${RPI_PREFIX##*/}-g++"
-
-# Append path to the selected toolchain
-PATH=$PATH:${RPI_PREFIX%/*}
-
-# Execute the command chain
-exec "$@"
-
-# vi: set ts=4 sw=4 expandtab:
+# vi: set ts=2 sw=2 expandtab:

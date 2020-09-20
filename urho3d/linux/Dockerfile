@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019-2020 Yao Wei Tjong. All rights reserved.
+# Copyright (c) 2018-2020 Yao Wei Tjong. All rights reserved.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -38,17 +38,23 @@ RUN dpkg --add-architecture i386 && apt-get update && apt-get install -y --no-in
     # LLVM/Clang compiler toolchain, use 'CC=clang CXX=clang++' to choose this toolchain instead of gcc/g++
     clang clang-tidy clang-format \
     \
-    # 32-bit support, use 'URHO3D_64BIT=0' to do 32-bit build
-    libxrandr-dev:i386 libglapi-mesa:i386 libgl1-mesa-glx:i386 libgl1-mesa-dev:i386 libxext-dev:i386 \
-    libxrender-dev:i386 libglib2.0-dev:i386 libdbus-1-dev:i386 lib32readline6-dev \
-    \
     # Virtual framebuffer for CI testing
-    xvfb
+    xvfb \
+    \
+    # 32-bit support, use 'ARCH=32bit' or 'ARCH=32' to do 32-bit build
+    libxrandr-dev:i386 libglapi-mesa:i386 libgl1-mesa-glx:i386 libgl1-mesa-dev:i386 libxext-dev:i386 libxrender-dev:i386
+
+# Quick workaround to avoid "E: Could not configure 'libc6:i386'" by separating the installation into two layers
+RUN apt-get install -y --no-install-recommends \
+    libglib2.0-dev:i386 libdbus-1-dev:i386 lib32readline6-dev libssl-dev:i386 libudev-dev:i386 \
+    \
+    # Clean up
+ && apt-get clean
 
 COPY sysroot/ /
 
-ENTRYPOINT ["/entrypoint.sh", "/native_entrypoint.sh"]
+ENTRYPOINT ["/entrypoint.sh", "/linux_entrypoint.sh"]
 
-CMD rake cmake && rake make
+CMD ["/usr/bin/rake"]
 
 # vi: set ts=4 sw=4 expandtab:

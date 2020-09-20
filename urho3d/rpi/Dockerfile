@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019-2020 Yao Wei Tjong. All rights reserved.
+# Copyright (c) 2018-2020 Yao Wei Tjong. All rights reserved.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -20,44 +20,65 @@
 # THE SOFTWARE.
 #
 
-FROM ubuntu:latest AS builder
+FROM weitjong/toolchains:armv8-rpi3-linux-gnueabihf AS arm-linux-gnueabihf
+
+##
+
+FROM weitjong/toolchains:aarch64-rpi3-linux-gnu AS aarch64-linux-gnu
+
+##
+
+FROM ubuntu:latest AS rpi-sysroot-builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends qemu-user-static wget xz-utils \
     \
-    # Download root compressed file from the latest raspbian lite release
-    && mkdir /sysroot && wget --no-check-certificate -qO- https://downloads.raspberrypi.org/raspbian_lite/root.tar.xz |tar -xJC /sysroot
-
+    # Download root compressed file from the latest Raspberry Pi OS lite release
+ && mkdir /sysroot && wget --no-check-certificate -qO- https://downloads.raspberrypi.org/raspios_lite_armhf/root.tar.xz |tar -xJC /sysroot \
+    \
     # Prepare it to be chroot-ed
-RUN cp $(which qemu-arm-static) /sysroot/$(which qemu-arm-static) \
-    && perl -pi -e 's/^/#/g' /sysroot/etc/ld.so.preload \
+ && cp $(which qemu-arm-static) /sysroot/$(which qemu-arm-static) \
+ && perl -pi -e 's/^/#/g' /sysroot/etc/ld.so.preload \
     \
     # Install Urho3D prerequisite packages in chroot jail
-    && chroot /sysroot /bin/bash -c 'apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends libx11-dev libasound2-dev libpulse-dev libdbus-1-dev libreadline6-dev libudev-dev libevdev2' \
+ && chroot /sysroot /bin/bash -c 'apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends libx11-dev libasound2-dev libpulse-dev libdbus-1-dev libreadline6-dev libssl-dev libudev-dev libevdev2' \
     \
-    # Fix broken symbolic links
-    && for l in $(find /sysroot/lib -xtype l); do ln -sf $(basename $(readlink $l)) $l; done \
-    && for l in $(find /sysroot/usr/lib/arm-linux-gnueabihf -xtype l); do ln -sf ../../..$(readlink $l) $l; done
+ && mkdir -p /rpi-sysroot/usr && for d in opt lib usr/include usr/lib; do mv /sysroot/$d /rpi-sysroot/$(dirname $d); done \
+    \
+    # Fix broken symlinks
+ && for l in $(find /rpi-sysroot -xtype l -name \*.so); do ln -sf /rpi-sysroot$(readlink $l) $l; done
+
+##
+
+FROM weitjong/sysroots:raspios_arm64 AS rpi64-sysroot-builder
+
+RUN rm -rf /sysroot/home \
+    \
+    # Install Urho3D prerequisite packages in chroot jail
+ && chroot /sysroot /bin/bash -c 'apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends libdrm-dev libgbm-dev libgles2-mesa-dev libx11-dev libasound2-dev libpulse-dev libdbus-1-dev libreadline6-dev libssl-dev libudev-dev libevdev2' \
+    \
+ && mkdir -p /rpi64-sysroot/usr && for d in lib usr/include usr/lib; do mv /sysroot/$d /rpi64-sysroot/$(dirname $d); done \
+    \
+    # Fix broken symlinks
+ && for l in $(find /rpi64-sysroot -xtype l -name \*.so); do ln -sf /rpi64-sysroot$(readlink $l) $l; done
 
 ##
 
 FROM urho3d/dockerized:latest
 
-ENV RPI_PREFIX=/rpi-tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian-x64/bin/arm-linux-gnueabihf \
-    RPI_SYSROOT=/rpi-sysroot
+ENV PLATFORM=rpi \
+    RPI32_PREFIX=/rpi-tools/arm-linux-gnueabihf/bin/arm-linux-gnueabihf RPI32_SYSROOT=/rpi-sysroot \
+    RPI64_PREFIX=/rpi-tools/aarch64-linux-gnu/bin/aarch64-linux-gnu RPI64_SYSROOT=/rpi64-sysroot
 
-RUN git clone -q --depth 1 https://github.com/raspberrypi/tools.git /rpi-tools \
-    && for compiler in $RPI_PREFIX-{gcc,g++}; do touch -d "$(cd /rpi-tools && git log -1 --format=%cd --date=short)" $compiler; done
-
-# Copy prepared sysroot from builder stage
-COPY --from=builder /sysroot/opt/ /rpi-sysroot/opt/
-COPY --from=builder /sysroot/lib/ /rpi-sysroot/lib/
-COPY --from=builder /sysroot/usr/include/ /rpi-sysroot/usr/include/
-COPY --from=builder /sysroot/usr/lib/ /rpi-sysroot/usr/lib/
+# Copy prepared toolchain and sysroot from the builder stages
+COPY --from=arm-linux-gnueabihf /toolchain/ /rpi-tools/
+COPY --from=aarch64-linux-gnu /toolchain/ /rpi-tools/
+COPY --from=rpi-sysroot-builder /rpi-sysroot/ /rpi-sysroot/
+COPY --from=rpi64-sysroot-builder /rpi64-sysroot/ /rpi64-sysroot/
 
 COPY sysroot/ /
 
 ENTRYPOINT ["/entrypoint.sh", "/rpi_entrypoint.sh"]
 
-CMD rake cmake rpi && rake make rpi
+CMD ["/usr/bin/rake"]
 
 # vi: set ts=4 sw=4 expandtab:

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Copyright (c) 2019-2020 Yao Wei Tjong. All rights reserved.
+# Copyright (c) 2018-2020 Yao Wei Tjong. All rights reserved.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -21,8 +21,8 @@
 # THE SOFTWARE.
 #
 
-# Select the compiler toolchain based on the URHO3D_64BIT env var
-if [[ "$URHO3D_64BIT" == "0" ]]; then export CMAKE_PREFIX_PATH=/usr/lib/i386-linux-gnu; fi
+# Select the compiler toolchain based on the ARCH env var
+if [[ "${ARCH/bit}" == "32" ]]; then export CMAKE_PREFIX_PATH=/usr/lib/i386-linux-gnu; fi
 
 # Execute the command chain
 exec "$@"

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019-2020 Yao Wei Tjong. All rights reserved.
+# Copyright (c) 2018-2020 Yao Wei Tjong. All rights reserved.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,23 +24,22 @@ FROM urho3d/dockerized:latest
 
 ARG VERSION=latest
 
-ENV EMSDK=/emsdk-master \
-    EMCC_SKIP_SANITY_CHECK=1 \
-    EMSCRIPTEN_ALLOW_NEWER_PYTHON=1
+ENV PLATFORM=web \
+    EMSDK=/emsdk-master EMCC_SKIP_SANITY_CHECK=1
 
 RUN apt-get update && apt-get install -y --no-install-recommends default-jre libxml2 python3 python3-distutils \
-    && update-alternatives --install /usr/bin/python python /usr/bin/python3 3 \
-    && wget -qO- https://github.com/emscripten-core/emsdk/archive/master.tar.gz |tar -xz \
-    && cd $EMSDK \
-    && ./emsdk update-tags \
-    && ./emsdk install $VERSION \
-    && ./emsdk activate $VERSION \
-    && ./emsdk construct_env
+ && update-alternatives --install /usr/bin/python python /usr/bin/python3 3 \
+ && wget -qO- https://github.com/emscripten-core/emsdk/archive/master.tar.gz |tar -xz \
+ && cd $EMSDK \
+ && ./emsdk update-tags \
+ && ./emsdk install $VERSION \
+ && ./emsdk activate $VERSION \
+ && apt-get clean
 
 COPY sysroot/ /
 
 ENTRYPOINT ["/entrypoint.sh", "/web_entrypoint.sh"]
 
-CMD rake cmake web && rake make web
+CMD ["/usr/bin/rake"]
 
 # vi: set ts=4 sw=4 expandtab:

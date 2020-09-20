@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019-2020 Yao Wei Tjong. All rights reserved.
+# Copyright (c) 2018-2020 Yao Wei Tjong. All rights reserved.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -20,78 +20,78 @@
 # THE SOFTWARE.
 #
 
-FROM ubuntu:latest AS builder-armhf
-
-RUN apt-get update && apt-get install -y --no-install-recommends lsb-release qemu-user-static wget xz-utils \
-    \
-    # Get the latest LTS codename
-    && name=$(lsb_release -c |cut -d':' -f2 |xargs) \
-    \
-    # Download root compressed file from the matching Ubuntu cloud image
-    && mkdir /sysroot && wget --no-check-certificate -qO- https://cloud-images.ubuntu.com/$name/current/$name-server-cloudimg-armhf-root.tar.xz |tar -xJC /sysroot
-
-    # Prepare it to be chroot-ed
-RUN cp $(which qemu-arm-static) /sysroot/$(which qemu-arm-static) \
-    && rm /sysroot/etc/resolv.conf && echo nameserver 8.8.8.8 >/sysroot/etc/resolv.conf \
-    \
-    # Install Urho3D prerequisite packages in chroot jail
-    && chroot /sysroot /bin/bash -c 'apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends libgles2-mesa-dev libx11-dev libxcursor-dev libxext-dev libxi-dev libxinerama-dev libxrandr-dev libxrender-dev libxss-dev libxxf86vm-dev libasound2-dev libpulse-dev libdbus-1-dev libreadline6-dev libudev-dev' \
-    \
-    # Fix broken symbolic links
-    && for l in $(find /sysroot/usr/lib/arm-linux-gnueabihf -xtype l); do ln -sf ../../..$(readlink $l) $l; done
+FROM weitjong/toolchains:arm-cortex_a15-linux-gnueabihf AS arm-linux-gnueabihf
 
 ##
 
-FROM ubuntu:latest AS builder-arm64
+FROM weitjong/toolchains:aarch64-unknown-linux-gnu AS aarch64-linux-gnu
+
+##
+
+FROM ubuntu:latest AS arm-sysroot-builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends lsb-release qemu-user-static wget xz-utils \
     \
     # Get the latest LTS codename
-    && name=$(lsb_release -c |cut -d':' -f2 |xargs) \
+ && name=$(lsb_release -c |cut -d':' -f2 |xargs) \
     \
     # Download root compressed file from the matching Ubuntu cloud image
-    && mkdir /sysroot && wget --no-check-certificate -qO- https://cloud-images.ubuntu.com/$name/current/$name-server-cloudimg-arm64-root.tar.xz |tar -xJC /sysroot
-
+ && mkdir /sysroot && wget --no-check-certificate -qO- https://cloud-images.ubuntu.com/$name/current/$name-server-cloudimg-armhf-root.tar.xz |tar -xJC /sysroot \
+    \
     # Prepare it to be chroot-ed
-RUN cp $(which qemu-aarch64-static) /sysroot/$(which qemu-aarch64-static) \
-    && rm /sysroot/etc/resolv.conf && echo nameserver 8.8.8.8 >/sysroot/etc/resolv.conf \
+ && cp $(which qemu-arm-static) /sysroot/$(which qemu-arm-static) \
+ && rm /sysroot/etc/resolv.conf && echo nameserver 8.8.8.8 >/sysroot/etc/resolv.conf \
     \
     # Install Urho3D prerequisite packages in chroot jail
-    && chroot /sysroot /bin/bash -c 'apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends libgles2-mesa-dev libx11-dev libxcursor-dev libxext-dev libxi-dev libxinerama-dev libxrandr-dev libxrender-dev libxss-dev libxxf86vm-dev libasound2-dev libpulse-dev libdbus-1-dev libreadline6-dev libudev-dev' \
+ && chroot /sysroot /bin/bash -c 'apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends libgles2-mesa-dev libx11-dev libxcursor-dev libxext-dev libxi-dev libxinerama-dev libxrandr-dev libxrender-dev libxss-dev libxxf86vm-dev libasound2-dev libpulse-dev libdbus-1-dev libreadline6-dev libssl-dev libudev-dev' \
     \
-    # Fix broken symbolic links
-    && for l in $(find /sysroot/usr/lib/aarch64-linux-gnu -xtype l); do ln -sf ../../..$(readlink $l) $l; done
+ && mkdir -p /arm-sysroot/usr && for d in lib usr/include usr/lib; do mv /sysroot/$d /arm-sysroot/$(dirname $d); done \
+    \
+    # Fix broken symlinks
+ && for l in $(find /arm-sysroot -xtype l -name \*.so); do ln -sf $(basename $(readlink $l)) $l; done
+
+##
+
+FROM ubuntu:latest AS arm64-sysroot-builder
+
+RUN apt-get update && apt-get install -y --no-install-recommends lsb-release qemu-user-static wget xz-utils \
+    \
+    # Get the latest LTS codename
+ && name=$(lsb_release -c |cut -d':' -f2 |xargs) \
+    \
+    # Download root compressed file from the matching Ubuntu cloud image
+ && mkdir /sysroot && wget --no-check-certificate -qO- https://cloud-images.ubuntu.com/$name/current/$name-server-cloudimg-arm64-root.tar.xz |tar -xJC /sysroot \
+    \
+    # Prepare it to be chroot-ed
+ && cp $(which qemu-aarch64-static) /sysroot/$(which qemu-aarch64-static) \
+ && rm /sysroot/etc/resolv.conf && echo nameserver 8.8.8.8 >/sysroot/etc/resolv.conf \
+    \
+    # Install Urho3D prerequisite packages in chroot jail
+ && chroot /sysroot /bin/bash -c 'apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends libgles2-mesa-dev libx11-dev libxcursor-dev libxext-dev libxi-dev libxinerama-dev libxrandr-dev libxrender-dev libxss-dev libxxf86vm-dev libasound2-dev libpulse-dev libdbus-1-dev libreadline6-dev libssl-dev libudev-dev' \
+    \
+ && mkdir -p /arm64-sysroot/usr && for d in lib usr/include usr/lib; do mv /sysroot/$d /arm64-sysroot/$(dirname $d); done \
+    \
+    # Fix broken symlinks
+ && for l in $(find /arm64-sysroot -xtype l -name \*.so); do ln -sf $(basename $(readlink $l)) $l; done
 
 ##
 
 FROM urho3d/dockerized:latest
 
-ARG tool_version=5.5.0-2017.10-x86_64
-ARG armhf_triplet=arm-linux-gnueabihf
-ARG arm64_triplet=aarch64-linux-gnu
+ENV PLATFORM=arm \
+    ARM32_PREFIX=/arm-tools/arm-linux-gnueabihf/bin/arm-linux-gnueabihf ARM32_SYSROOT=/arm-sysroot \
+    ARM64_PREFIX=/arm-tools/aarch64-linux-gnu/bin/aarch64-linux-gnu ARM64_SYSROOT=/arm64-sysroot
 
-ENV ARMHF_PREFIX=/gcc-linaro-${tool_version}_$armhf_triplet/bin/$armhf_triplet \
-    ARM64_PREFIX=/gcc-linaro-${tool_version}_$arm64_triplet/bin/$arm64_triplet \
-    ARMHF_SYSROOT=/armhf-sysroot \
-    ARM64_SYSROOT=/arm64-sysroot
-
-RUN for triplet in $armhf_triplet $arm64_triplet; do tool=gcc-linaro-${tool_version}_$triplet \
-        && wget -qO- https://releases.linaro.org/components/toolchain/binaries/latest-5/$triplet/$tool.tar.xz |tar -xJ; done
-
-# Copy prepared sysroot from builder stage
-COPY --from=builder-armhf /sysroot/opt/ /armhf-sysroot/opt/
-COPY --from=builder-armhf /sysroot/lib/ /armhf-sysroot/lib/
-COPY --from=builder-armhf /sysroot/usr/include/ /armhf-sysroot/usr/include/
-COPY --from=builder-armhf /sysroot/usr/lib/ /armhf-sysroot/usr/lib/
-COPY --from=builder-arm64 /sysroot/opt/ /arm64-sysroot/opt/
-COPY --from=builder-arm64 /sysroot/lib/ /arm64-sysroot/lib/
-COPY --from=builder-arm64 /sysroot/usr/include/ /arm64-sysroot/usr/include/
-COPY --from=builder-arm64 /sysroot/usr/lib/ /arm64-sysroot/usr/lib/
+# Copy prepared toolchain and sysroot from the builder stages
+COPY --from=arm-linux-gnueabihf /toolchain/ /arm-tools/
+COPY --from=aarch64-linux-gnu /toolchain/ /arm-tools/
+COPY --from=arm-sysroot-builder /arm-sysroot/ /arm-sysroot/
+COPY --from=arm64-sysroot-builder /arm64-sysroot/ /arm64-sysroot/
 
 COPY sysroot/ /
 
 ENTRYPOINT ["/entrypoint.sh", "/arm_entrypoint.sh"]
 
-CMD rake cmake arm && rake make arm
+CMD ["/usr/bin/rake"]
 
 # vi: set ts=4 sw=4 expandtab:

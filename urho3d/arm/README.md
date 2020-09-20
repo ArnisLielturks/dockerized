@@ -1,5 +1,5 @@
 <!--
-  Copyright (c) 2019-2020 Yao Wei Tjong. All rights reserved.
+  Copyright (c) 2018-2020 Yao Wei Tjong. All rights reserved.
 
   Permission is hereby granted, free of charge, to any person obtaining a copy
   of this software and associated documentation files (the "Software"), to deal
@@ -32,7 +32,7 @@ descendant image targeting a new platform.
 This repo has a number of branches, one for each target platform. For more detail
 see their individual README.md file.
 
-- [Native](https://hub.docker.com/r/urho3d/dockerized-native/)
+- [Linux](https://hub.docker.com/r/urho3d/dockerized-linux/)
 - [MinGW](https://hub.docker.com/r/urho3d/dockerized-mingw/)
 - [Android](https://hub.docker.com/r/urho3d/dockerized-android/)
 - [Raspberry-Pi](https://hub.docker.com/r/urho3d/dockerized-rpi/)
